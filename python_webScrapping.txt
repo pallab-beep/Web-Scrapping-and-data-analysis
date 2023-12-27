@@ -1,0 +1,233 @@
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+
+url = "https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population"
+
+res = requests.get(url)
+soup = BeautifulSoup(res.text, "html.parser")
+
+elements = soup.find_all("tr")
+
+wpop = []
+for element in elements:
+    country = element.find("a", title=True)
+    if country:
+        country_name = country["title"]
+    else:
+        continue
+
+    population = element.find("td", style="text-align:right")
+    if population:
+        population_text = population.text
+    else:
+        continue
+
+    percentage = element.find("td", style="text-align:right;font-size:inherit")
+    if percentage:
+        percentage_text = percentage.text
+    else:
+        continue
+
+    date = element.find("span", style="white-space:nowrap")
+    if date:
+        date_text = date.text
+    else:
+        continue
+
+   # print(f"Country: {country_name}, Population: {population_text}, Percentage: {percentage_text}, Date: {date_text}")
+    wpop.append([country_name, population_text, percentage_text, date_text])
+    df = pd.DataFrame(wpop, columns=['Country', 'Population', 'Percentage', 'Date'])
+    df.to_csv('wpop.csv')
+
+
+#Web scraping for second table
+
+import pandas as pd
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+
+url = 'https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)#Table'
+
+res = requests.get(url)
+soup = BeautifulSoup(res.text, 'html.parser')
+#print(soup)
+tables = soup.find_all('tr')
+print_countries = False
+gdp = []
+name = None
+r_name = None
+f_name = None
+y_2023_name = None
+estimate_name = None
+y_2022_name = None
+estimate_1_name = None
+y_2021_name = None
+for table in tables:
+
+    country = table.find('a', title=True)
+    if country:
+        name = country.text
+        if name == "International Monetary Fund" or name == "UN region":
+            continue
+        if name == "Tuvalu":
+           # print(name)
+            print_countries = True
+            break
+        if not print_countries:
+          #  print(name)
+            pass
+    region = table.find('td', style="text-align:center")
+    if region:
+        r_name = region.text
+        #print(r_name)
+
+    try:
+        forecast = region.find_next_sibling()
+        next_sibling = region.find_next_sibling()
+        if next_sibling:
+            f_name = next_sibling.text
+            #print(f_name)
+    except AttributeError:
+        forecast = None
+
+    try:
+        y_2023 = forecast.find_next_sibling()
+        next_sibling1 = forecast.find_next_sibling()
+        if next_sibling1:
+            y_2023_name = next_sibling1.text
+            #print(y_2023_name)
+    except AttributeError:
+        y_2023 = None
+
+    try:
+        estimate = y_2023.find_next_sibling()
+        next_sibling2 = y_2023.find_next_sibling()
+        if next_sibling2:
+            estimate_name = next_sibling2.text
+            #print(estimate_name)
+    except AttributeError:
+        estimate = None
+
+    try:
+        y_2022 = estimate.find_next_sibling()
+        next_sibling3 = estimate.find_next_sibling()
+        if next_sibling3:
+            y_2022_name = next_sibling3.text
+            #print(y_2022_name)
+    except AttributeError:
+        y_2022 = None
+
+    try:
+        estimate_1 = y_2022.find_next_sibling()
+        next_sibling4 = y_2022.find_next_sibling()
+        if next_sibling4:
+            estimate_1_name = next_sibling4.text
+            #print(estimate_1_name)
+    except AttributeError:
+        estimate_1 = None
+
+    try:
+        y_2021 = estimate_1.find_next_sibling()
+        next_sibling5 = estimate_1.find_next_sibling()
+        if next_sibling5:
+            y_2021_name = next_sibling5.text
+            #print(y_2021_name)
+    except AttributeError:
+        y_2021 = None
+
+    if name!=None and r_name!=None and f_name!=None and y_2023_name!=None and estimate_name!=None and y_2022_name!=None and estimate_1_name!=None and y_2021_name!=None:
+        gdp.append([name, r_name, f_name, y_2023_name, estimate_name, y_2022_name, estimate_1_name, y_2021_name])
+        gdp1 = gdp[1::]
+        df = pd.DataFrame(gdp, columns=['Country', 'UN_Region', 'Forecast', 'Year_2023', 'Estimate', 'Year_2022', 'Estimate1', 'Year_2021'])
+        #df.to_csv('gdp1.csv')
+        df.to_excel
+
+
+
+Data cleaning using sql
+
+--SELECT * 
+--FROM wpop
+--WHERE ISNUMERIC(Percentage) = 0
+
+--UPDATE wpop
+--SET Percentage = REPLACE(Percentage, '%', '')
+--WHERE Country IN ('Hong Kong', 'Macau')
+
+--ALTER TABLE wpop$  
+--ALTER COLUMN Percentage DECIMAL(20,10) NULL
+
+--Alter table wpop$
+--Alter column Date DATE
+
+
+--This gives the data of top 5 economies of 2023
+select top 5 Country, max(Forecast) as top_income_2023
+from gdp1
+group by UN_Region, Country
+order by top_income_2023 desc
+
+--Top 5 countries with percentage increase in Gdp from their respective regions
+with cte1 as (
+    select top 5 Country, UN_Region, max(Estimate) as top_income_2022
+    from gdp1
+    group by UN_Region, Country
+    order by top_income_2022 desc
+),
+cte2 as (
+    select top 5 Country, UN_Region, max(Forecast) as top_income_2023
+    from gdp1
+    group by UN_Region, Country
+    order by top_income_2023 desc
+)
+select 
+    cte1.Country, cte1.UN_Region,
+    cte1.top_income_2022, 
+    cte2.top_income_2023, 
+    ROUND(((cte2.top_income_2023 - cte1.top_income_2022) * 100.0 / cte1.top_income_2022), 2) as percentage_increase
+from 
+    cte1 
+inner join 
+    cte2 on cte1.Country = cte2.Country
+
+
+--This query orders population wise gdp of countries i.e. countries are arranged in population wise and what is their respective gdp in the world
+SELECT 
+    p.Country, 
+    p.Population,
+    g.Forecast AS GDP,
+    RANK() OVER (ORDER BY p.Population DESC) AS population_rank,
+    RANK() OVER (ORDER BY g.Forecast DESC) AS gdp_rank
+FROM wpop$ p
+JOIN gdp1 g ON p.Country = g.Country
+order by population_rank, gdp_rank
+
+--This query divides population into large, medium and small and then lists the gdp accordingly (whether small, medium, large)
+SELECT
+    p.Country,
+    p.Population,
+    g.Forecast AS GDP,
+    CASE
+        WHEN p.Population > 500000000 THEN 'Large Population'
+        WHEN p.Population > 100000000 THEN 'Medium Population'
+        ELSE 'Small Population'
+    END AS population_bucket,
+    CASE 
+        WHEN g.Forecast > 5000000000 THEN 'Large GDP'
+        WHEN g.Forecast > 1000000000 THEN 'Medium GDP'
+        ELSE 'Small GDP'
+    END AS gdp_bucket
+FROM
+    wpop$ p
+JOIN gdp1 g ON 
+    p.Country = g.Country
+
+--This query gives the per capita gdp for 2023 
+SELECT 
+    p.Country, p.Population, g.Forecast, 
+    g.Forecast/p.Population AS per_capita
+FROM wpop$ p
+JOIN gdp1 g
+    ON p.Country = g.Country
